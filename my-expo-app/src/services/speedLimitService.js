@@ -1,7 +1,7 @@
 // src/services/speedLimitService.js
 import { getCurrentLocation } from './locationService';
 
-const ROADS_API_KEY = 'AIzaSyDmhFzSlviGQ9PNyUJkmBXONABkM1Pl5wY';
+const ROADS_API_KEY = '';
 
 // 1) Low-level: get speed limit from lat/lng
 export async function getSpeedLimitForCoords(lat, lng) {
