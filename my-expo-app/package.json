@@ -25,6 +25,7 @@
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
+    "@react-native-community/cli": "latest",
     "@babel/core": "^7.20.0",
     "@types/react": "~19.1.10",
     "eslint": "^9.25.1",

@@ -1,26 +1,8 @@
-import { useEffect, useState, useRef } from "react";
-import { Text, View, AppState } from "react-native";
+import { Text, View } from "react-native";
+import { useAppStateCount } from "./hooks/useAppStateCount";
 
 export default function App() {
-    const [activeCount, setActiveCount] = useState(0);
-    const actualCount = Math.floor((activeCount + 1) / 2);
-
-    const isMounted = useRef(false);
-
-    useEffect(() => {
-        isMounted.current = true;
-        
-        const subscription = AppState.addEventListener("change", (nextAppState) => {
-            if (nextAppState === "active" || nextAppState === "background") {
-                setActiveCount((count) => count + 1);
-            }
-        });
-
-        return () => {
-            isMounted.current = false;
-            subscription.remove();
-        };
-    }, []);
+    const activeCount = useAppStateCount();
 
     return (
         <View className="flex-1 items-center justify-center bg-white">
@@ -28,7 +10,7 @@ export default function App() {
                 Welcome to Nativewind!
             </Text>
             <Text className="mt-4 text-lg">
-                AppState was active {actualCount} times
+                AppState was active {activeCount} times
             </Text>
         </View>
     );
