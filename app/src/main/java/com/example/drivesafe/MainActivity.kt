@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Surface
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val REQUEST_LOCATION_PERMISSIONS = 1001
+        private const val REQUEST_OVERLAY_PERMISSION = 1002
 
         private val REQUIRED_PERMISSIONS = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -103,7 +105,8 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        checkOverlayPermission()
+        // Start the TapListenerService (check for overlay permission first)
+        startTapListenerService()
 
         setContent {
             DriveSafeTheme {
@@ -112,53 +115,38 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkOverlayPermission() {
-        if (!Settings.canDrawOverlays(this)) {
-            // If we don't have permission, send user to settings
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
-            )
-            startActivityForResult(intent, 1002)
-        } else {
-            // Permission granted, start the service!
-            startTapListenerService()
-        }
-    }
-
     private fun startTapListenerService() {
-        val intent = Intent(this, TapListenerService::class.java)
-        startService(intent)
-    }
-
-    // Handle the result when they come back from settings
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 1002) {
-            if (Settings.canDrawOverlays(this)) {
-                startTapListenerService()
+        // Check if we have overlay permission (required for floating window)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            // Request overlay permission
+            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                data = android.net.Uri.parse("package:$packageName")
+            }
+            startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION)
+        } else {
+            // We have permission, start the service
+            val intent = Intent(this, TapListenerService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
             } else {
-                // Permission denied - maybe show a Toast explaining why it's needed
+                startService(intent)
             }
         }
     }
 
-    private fun hasLocationPermission(): Boolean {
-        return REQUIRED_PERMISSIONS.all { permission ->
-            ContextCompat.checkSelfPermission(
-                this,
-                permission
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-    }
-
-    private fun startLocationService() {
-        val intent = Intent(this, LocationService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            REQUEST_OVERLAY_PERMISSION -> {
+                // Check if overlay permission was granted
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this)) {
+                    startTapListenerService()
+                } else {
+                    // Handle the case where permission was denied
+                    // You might want to show a message to the user
+                    Toast.makeText(this, "Overlay permission is required for the tap detection feature", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -180,7 +168,26 @@ class MainActivity : ComponentActivity() {
             // else: you can show a message/toast later if you want
         }
     }
+
+    private fun hasLocationPermission(): Boolean {
+        return REQUIRED_PERMISSIONS.all { permission ->
+            ContextCompat.checkSelfPermission(
+                this,
+                permission
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun startLocationService() {
+        val intent = Intent(this, LocationService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

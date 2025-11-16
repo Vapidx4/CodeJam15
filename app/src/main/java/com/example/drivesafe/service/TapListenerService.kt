@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
@@ -15,6 +16,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.example.drivesafe.R
 
@@ -23,7 +25,6 @@ class TapListenerService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var floatingView: View
 
-    // Variables for Triple Tap Logic
     private var tapCount = 0
     private val handler = Handler(Looper.getMainLooper())
     private val resetTapRunnable = Runnable { tapCount = 0 }
@@ -35,14 +36,16 @@ class TapListenerService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-        floatingView = ImageView(this).apply {
-            setImageResource(android.R.drawable.ic_btn_speak_now)
-            alpha = 0.5f // Make it semi-transparent
-        }
+        startReliableForegroundService()
 
-        val layoutParams = WindowManager.LayoutParams(
+        floatingView = View.inflate(this, R.layout.floating_card, null)
+
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
@@ -51,14 +54,13 @@ class TapListenerService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
-        )
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = 0
+            y = 300
+        }
 
-        layoutParams.gravity = Gravity.TOP or Gravity.START
-        layoutParams.x = 0
-        layoutParams.y = 100
-
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        windowManager.addView(floatingView, layoutParams)
+        windowManager.addView(floatingView, params)
 
         floatingView.setOnTouchListener { view, event ->
             if (event.action == MotionEvent.ACTION_DOWN) {
@@ -72,44 +74,68 @@ class TapListenerService : Service() {
     private fun handleTripleTap() {
         tapCount++
 
-        // Reset the counter if they don't tap again within 400ms
         handler.removeCallbacks(resetTapRunnable)
         handler.postDelayed(resetTapRunnable, 400)
 
         if (tapCount == 3) {
-            // TRIPLE TAP DETECTED!
-            showBigBannerNotification()
+            Toast.makeText(this, "Triple Tap Detected!", Toast.LENGTH_SHORT).show()
+            showNormalNotification()
             tapCount = 0
         }
     }
 
-    private fun showBigBannerNotification() {
-        val channelId = "emergency_channel"
+    private fun showNormalNotification() {
+        val channelId = "tap_detection_channel"
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // Create High Priority Channel
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "Emergency Alerts",
-                NotificationManager.IMPORTANCE_HIGH // IMPORTANCE_HIGH makes it pop up!
+                "Tap Detection",
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Channel for urgent alerts"
+                description = "Notifications for triple tap detection"
                 enableVibration(true)
             }
             notificationManager.createNotificationChannel(channel)
         }
 
         val notification = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("⚠️ EMERGENCY ALERT ⚠️")
-            .setContentText("Triple tap detected! Are you okay?")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("Triple Tap Detected")
+            .setContentText("Three taps were detected on the floating button.")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .build()
 
-        notificationManager.notify(999, notification)
+        notificationManager.notify(1001, notification)
+    }
+
+    private fun startReliableForegroundService() {
+        val channelId = "tap_listener_channel"
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Service Status",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("DriveSafe is active")
+            .setContentText("Tap detector is running.")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(1, notification)
+        }
     }
 
     override fun onDestroy() {
