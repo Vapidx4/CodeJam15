@@ -75,6 +75,8 @@ import com.example.drivesafe.ui.debug.MotionDebugScreen
 import com.example.drivesafe.location.LocationTracker
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import com.example.drivesafe.service.TapListenerService
 
 @Suppress("DEPRECATION")
@@ -106,7 +108,7 @@ class MainActivity : ComponentActivity() {
         }
 
         // Start the TapListenerService (check for overlay permission first)
-        startTapListenerService()
+//        startTapListenerService()
 
         setContent {
             DriveSafeTheme {
@@ -265,6 +267,7 @@ fun DriveSafeApp() {
                 AppDestinations.HOME -> HomeScreen()
                 AppDestinations.FAVORITES -> FavoritesScreen()
                 AppDestinations.PROFILE -> ProfileScreen()
+                AppDestinations.LOBSTER -> LobsterScreen()
             }
         }
     }
@@ -297,31 +300,45 @@ fun HomeScreen() {
 @Composable
 fun WelcomeCard() {
     Card(
+        // Use a more distinct shape and elevation
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            // Keep the primary container color but consider a lighter shade for contrast
+            containerColor = MaterialTheme.colorScheme.primary
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
+        Row( // Change to Row to align icon and text
+            modifier = Modifier.padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Good morning!",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+            // Add a leading icon for visual interest
+            Icon(
+                imageVector = Icons.Default.DirectionsCar,
+                contentDescription = "Car Icon",
+                tint = Color.White, // High contrast
+                modifier = Modifier.size(48.dp).padding(end = 16.dp)
             )
-            Text(
-                text = "Ready for a safe drive?",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-            )
+            Column {
+                Text(
+                    text = "Good morning, driver!", // More engaging text
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White // Use White for high contrast on the primary color
+                )
+                Text(
+                    text = "Ready for a safe drive?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.8f) // Slightly transparent white
+                )
+            }
         }
     }
 }
-
 @Composable
 fun StatsOverview() {
+    val averageSpeed = MotionStateHolder.averageSpeed
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -344,7 +361,7 @@ fun StatsOverview() {
             )
             StatCard(
                 title = "Number of Interventions",
-                value = "492",
+                value = "67",
                 icon = Icons.Default.Warning,
                 modifier = Modifier.weight(1f)
             )
@@ -361,8 +378,8 @@ fun StatsOverview() {
             )
             StatCard(
                 title = "Avg. Speed",
-                value = "62",
-                unit = "km/h",
+                value = String.format("%.1f", averageSpeed),
+                unit = " km/h",
                 icon = Icons.Default.Notifications,
                 modifier = Modifier.weight(1f)
             )
@@ -374,6 +391,7 @@ fun StatsOverview() {
 fun MotionIndicator() {
     val isMoving = MotionStateHolder.isMoving
     val currentSpeed = MotionStateHolder.speedKmh
+    val averageSpeed = MotionStateHolder.averageSpeed
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -383,24 +401,111 @@ fun MotionIndicator() {
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                imageVector = if (isMoving) Icons.Default.DirectionsCar else Icons.Default.Pause,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Text(
-                text = if (isMoving) "Moving" else "Standing",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "${String.format("%.1f", currentSpeed)} km/h",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (isMoving) Icons.Default.DirectionsCar else Icons.Default.Pause,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = if (isMoving) "Moving" else "Standing",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Current Speed
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Current Speed:",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "${String.format("%.1f", currentSpeed)} km/h",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Average Speed with debug info
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Average Speed:",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${String.format("%.1f", averageSpeed)} km/h",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Text(
+                        text = "(${AverageSpeedCalculator.getReadingCount()} readings)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+
+            // Debug button to simulate speed updates
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        // Simulate some speed readings for testing
+                        MotionStateHolder.update(50f, true)
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Test: 50 km/h")
+                }
+
+                Button(
+                    onClick = {
+                        MotionStateHolder.update(80f, true)
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text("Test: 80 km/h")
+                }
+            }
+
+            // Reset button for average speed
+            if (averageSpeed > 0) {
+                Button(
+                    onClick = { MotionStateHolder.resetAverageSpeed() },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Reset Average Speed")
+                }
+            }
         }
     }
 }
@@ -572,6 +677,22 @@ fun ProfileScreen() {
     }
 }
 
+
+@Composable
+fun LobsterScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "🦞",
+            style = MaterialTheme.typography.displayLarge,
+            fontSize = 200.sp
+        )
+    }
+}
 enum class AppDestinations(
     val label: String,
     val filledIcon: ImageVector,
@@ -580,6 +701,7 @@ enum class AppDestinations(
     HOME("Home", Icons.Filled.Home, Icons.Outlined.Home),
     FAVORITES("Favorites", Icons.Filled.Favorite, Icons.Outlined.FavoriteBorder),
     PROFILE("Profile", Icons.Filled.AccountCircle, Icons.Outlined.Person),
+    LOBSTER("Lobster", Icons.Filled.Favorite, Icons.Outlined.FavoriteBorder),
 }
 
 
