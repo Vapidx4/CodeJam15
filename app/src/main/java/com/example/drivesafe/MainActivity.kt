@@ -5,6 +5,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.view.Surface
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -27,8 +30,10 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
@@ -49,6 +54,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,13 +72,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.drivesafe.ui.theme.DriveSafeTheme
 import com.example.drivesafe.ui.debug.MotionDebugScreen
-
+import com.example.drivesafe.location.LocationTracker
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Pause
+import com.example.drivesafe.service.TapListenerService
 
 @Suppress("DEPRECATION")
 class MainActivity : ComponentActivity() {
 
     companion object {
         private const val REQUEST_LOCATION_PERMISSIONS = 1001
+        private const val REQUEST_OVERLAY_PERMISSION = 1002
 
         private val REQUIRED_PERMISSIONS = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -95,6 +105,9 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        // Start the TapListenerService (check for overlay permission first)
+        startTapListenerService()
+
         setContent {
             DriveSafeTheme {
                 DriveSafeApp()
@@ -102,21 +115,38 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun hasLocationPermission(): Boolean {
-        return REQUIRED_PERMISSIONS.all { permission ->
-            ContextCompat.checkSelfPermission(
-                this,
-                permission
-            ) == PackageManager.PERMISSION_GRANTED
+    private fun startTapListenerService() {
+        // Check if we have overlay permission (required for floating window)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            // Request overlay permission
+            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                data = android.net.Uri.parse("package:$packageName")
+            }
+            startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION)
+        } else {
+            // We have permission, start the service
+            val intent = Intent(this, TapListenerService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
         }
     }
 
-    private fun startLocationService() {
-        val intent = Intent(this, LocationService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            REQUEST_OVERLAY_PERMISSION -> {
+                // Check if overlay permission was granted
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this)) {
+                    startTapListenerService()
+                } else {
+                    // Handle the case where permission was denied
+                    // You might want to show a message to the user
+                    Toast.makeText(this, "Overlay permission is required for the tap detection feature", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -138,7 +168,26 @@ class MainActivity : ComponentActivity() {
             // else: you can show a message/toast later if you want
         }
     }
+
+    private fun hasLocationPermission(): Boolean {
+        return REQUIRED_PERMISSIONS.all { permission ->
+            ContextCompat.checkSelfPermission(
+                this,
+                permission
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun startLocationService() {
+        val intent = Intent(this, LocationService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -236,6 +285,10 @@ fun HomeScreen() {
             StatsOverview()
         }
         item {
+            MotionIndicator()
+
+        }
+        item {
             QuickActions()
         }
     }
@@ -269,6 +322,7 @@ fun WelcomeCard() {
 
 @Composable
 fun StatsOverview() {
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -278,7 +332,23 @@ fun StatsOverview() {
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold
         )
-
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatCard(
+                title = "Risk Score",
+                value = "5",
+                icon = Icons.Default.Info,
+                modifier = Modifier.weight(1f)
+            )
+            StatCard(
+                title = "Number of Interventions",
+                value = "492",
+                icon = Icons.Default.Warning,
+                modifier = Modifier.weight(1f)
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -299,6 +369,42 @@ fun StatsOverview() {
         }
     }
 }
+
+@Composable
+fun MotionIndicator() {
+    val isMoving = MotionStateHolder.isMoving
+    val currentSpeed = MotionStateHolder.speedKmh
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = if (isMoving) Icons.Default.DirectionsCar else Icons.Default.Pause,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Text(
+                text = if (isMoving) "Moving" else "Standing",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "${String.format("%.1f", currentSpeed)} km/h",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
 
 @Composable
 fun StatCard(
