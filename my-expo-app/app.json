@@ -9,7 +9,13 @@
     "experiments": {
       "tsconfigPaths": true
     },
+<<<<<<< HEAD
     "plugins": [],
+=======
+    "plugins": [
+      "expo-router"
+    ],
+>>>>>>> main
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

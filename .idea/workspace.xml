@@ -5,7 +5,65 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1e97d774-c7b8-4f00-b177-7a63cd1eeb92" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/build.gradle.kts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/proguard-rules.pro" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/androidTest/java/com/example/drivesafe/ExampleInstrumentedTest.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/AndroidManifest.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/example/drivesafe/MainActivity.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/example/drivesafe/TapDetection.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/example/drivesafe/ui/theme/Color.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/example/drivesafe/ui/theme/Theme.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/example/drivesafe/ui/theme/Type.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/drawable/ic_launcher_background.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/drawable/ic_launcher_foreground.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-hdpi/ic_launcher.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-hdpi/ic_launcher_round.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-mdpi/ic_launcher.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-mdpi/ic_launcher_round.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-xhdpi/ic_launcher.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-xxhdpi/ic_launcher.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/values/colors.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/values/strings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/values/themes.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/xml/accessibility_service_config.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/xml/backup_rules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/res/xml/data_extraction_rules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/test/java/com/example/drivesafe/ExampleUnitTest.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gradle.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gradle/libs.versions.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.jar" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gradlew" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gradlew.bat" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/app/_layout.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/app/hooks/useAppStateCount.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/app/hooks/useDrivingDetection.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/app/index.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/app/speedlimit-debug.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/app/test-location.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/app/test1.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/app/test2.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/app/test3.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/src/background/locationTask.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/src/screens/SpeedLimitDebugScreen.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/src/screens/TestLocationScreen.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/src/services/backgroundMotionService.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/src/services/locationService.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/my-expo-app/src/services/speedLimitService.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/settings.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/my-expo-app/App.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/my-expo-app/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/my-expo-app/app.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/my-expo-app/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/my-expo-app/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/my-expo-app/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/my-expo-app/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -14,6 +72,24 @@
   </component>
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[DeviceId(pluginId=LocalEmulator, isTemplate=false, identifier=path=/Users/areebahfarid/.android/avd/Medium_Phone_2.avd)]" />
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <projects_view>
+          <tree_state>
+            <expand>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="DriveSafe" type="f1a62948:ProjectNode" />
+              </path>
+            </expand>
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -36,7 +112,7 @@
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "feature4/tap-detection",
+    "git-widget-placeholder": "Merging feature4/tap-detection",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "/Users/areebahfarid/StudioProjects/CodeJam15",
     "settings.editor.selected.configurable": "AndroidSdkUpdater"
