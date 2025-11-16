@@ -6,11 +6,13 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.Surface
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.camera.core.CameraSelector
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +27,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -78,37 +79,103 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import com.example.drivesafe.service.TapListenerService
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.lifecycle.LifecycleOwner
+import com.google.common.util.concurrent.ListenableFuture
+import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.ImageCapture
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
+import androidx.camera.view.PreviewView
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.outlined.Camera
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import com.example.drivesafe.databinding.ActivityMainBinding
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+
+
+typealias LumaListener = (luma: Double) -> Unit
 
 @Suppress("DEPRECATION")
 class MainActivity : ComponentActivity() {
+    private lateinit var cameraProviderFuture : ListenableFuture<ProcessCameraProvider>
+    private lateinit var cameraProvider: ProcessCameraProvider
+    private lateinit var cameraSelector: CameraSelector
+    private lateinit var preview: androidx.camera.core.Preview
+
+    //////
+    private lateinit var viewBinding: ActivityMainBinding
+
+    private var imageCapture: ImageCapture? = null
+
+    private var videoCapture: VideoCapture<Recorder>? = null
+    private var recording: Recording? = null
+
+    private lateinit var cameraExecutor: ExecutorService
 
     companion object {
         private const val REQUEST_LOCATION_PERMISSIONS = 1001
         private const val REQUEST_OVERLAY_PERMISSION = 1002
+        private const val REQUEST_CAMERA_PERMISSION = 1003
 
-        private val REQUIRED_PERMISSIONS = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
+//        private val REQUIRED_PERMISSIONS = arrayOf(
+//            Manifest.permission.ACCESS_FINE_LOCATION,
+//            Manifest.permission.ACCESS_COARSE_LOCATION,
+//            Manifest.permission.CAMERA
+//        )
+
+        private val REQUIRED_PERMISSIONS =
+            mutableListOf (
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.CAMERA
+            ).apply {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }.toTypedArray()
+
+        private const val TAG = "CameraXApp"
+        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
     }
+
+    private val activityResultLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions())
+        { permissions ->
+            val permissionGranted = permissions.entries.all {
+                it.key in REQUIRED_PERMISSIONS && it.value == true
+            }
+            if (!permissionGranted) {
+                Toast.makeText(baseContext,
+                    "Some permissions were denied",
+                    Toast.LENGTH_SHORT).show()
+            } else {
+                startLocationService()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Ask for location permission & start background tracking
-        if (hasLocationPermission()) {
+        // Ask for permissions & start background tracking
+        if (allPermissionsGranted()) {
             startLocationService()
         } else {
-            ActivityCompat.requestPermissions(
-                this,
-                REQUIRED_PERMISSIONS,
-                REQUEST_LOCATION_PERMISSIONS
-            )
+            requestPermissions()
         }
-
-        // Start the TapListenerService (check for overlay permission first)
-//        startTapListenerService()
 
         setContent {
             DriveSafeTheme {
@@ -117,39 +184,54 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun startTapListenerService() {
-        // Check if we have overlay permission (required for floating window)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            // Request overlay permission
-            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
-                data = android.net.Uri.parse("package:$packageName")
+
+    private fun takePhoto() {}
+
+    private fun captureVideo() {}
+
+    private fun startCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+
+        cameraProviderFuture.addListener({
+            // Used to bind the lifecycle of cameras to the lifecycle owner
+            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+
+            // Preview
+            val innerPreview = preview
+                .also {
+                    it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
+                }
+
+            // Select back camera as a default
+            val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+
+            try {
+                // Unbind use cases before rebinding
+                cameraProvider.unbindAll()
+
+                // Bind use cases to camera
+                cameraProvider.bindToLifecycle(
+                    this, cameraSelector, innerPreview)
+
+            } catch(exc: Exception) {
+                Log.e(TAG, "Use case binding failed", exc)
             }
-            startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION)
-        } else {
-            // We have permission, start the service
-            val intent = Intent(this, TapListenerService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
-        }
+
+        }, ContextCompat.getMainExecutor(this))
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        when (requestCode) {
-            REQUEST_OVERLAY_PERMISSION -> {
-                // Check if overlay permission was granted
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this)) {
-                    startTapListenerService()
-                } else {
-                    // Handle the case where permission was denied
-                    // You might want to show a message to the user
-                    Toast.makeText(this, "Overlay permission is required for the tap detection feature", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
+    private fun requestPermissions() {
+        activityResultLauncher.launch(REQUIRED_PERMISSIONS)
+    }
+
+    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
+        ContextCompat.checkSelfPermission(
+            baseContext, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor.shutdown()
     }
 
     @Deprecated("Deprecated in Java")
@@ -201,7 +283,7 @@ fun DriveSafeApp() {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "DriveSafe",
+                        text = "Driveguard",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -265,9 +347,9 @@ fun DriveSafeApp() {
         Box(modifier = Modifier.padding(innerPadding)) {
             when (currentDestination) {
                 AppDestinations.HOME -> HomeScreen()
-                AppDestinations.FAVORITES -> FavoritesScreen()
+                AppDestinations.CAMERA -> CameraScreen()
                 AppDestinations.PROFILE -> ProfileScreen()
-                AppDestinations.LOBSTER -> LobsterScreen()
+//                AppDestinations.LOBSTER -> LobsterScreen()
             }
         }
     }
@@ -291,10 +373,138 @@ fun HomeScreen() {
             MotionIndicator()
 
         }
-        item {
-            QuickActions()
+//        item {
+//            QuickActions()
+//        }
+    }
+}
+
+@Composable
+fun CameraScreen(
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    Column(modifier = modifier.fillMaxSize()) {
+        // Camera Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBackClick) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text(
+                text = "Camera Preview",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Camera Content
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
+        ) {
+            CameraPreview(
+                modifier = Modifier.fillMaxSize(),
+                lifecycleOwner = lifecycleOwner,
+                cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+            )
+
+            // Camera controls overlay
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Front Camera - Driver Monitoring",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .padding(8.dp)
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Add camera controls here if needed
+                    // Example: Switch camera, take photo, etc.
+                }
+            }
         }
     }
+}
+
+
+
+@androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+@Composable
+fun CameraPreview(
+    modifier: Modifier = Modifier,
+    lifecycleOwner: LifecycleOwner,
+    cameraSelector: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+) {
+    val context = LocalContext.current
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+
+    var preview by remember { mutableStateOf<androidx.camera.core.Preview?>(null) }
+    var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+
+    AndroidView(
+        factory = { ctx ->
+            PreviewView(ctx).apply {
+                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                scaleType = PreviewView.ScaleType.FILL_CENTER
+            }
+        },
+        modifier = modifier,
+        update = { previewView ->
+            val executor = ContextCompat.getMainExecutor(context)
+
+            cameraProviderFuture.addListener({
+                val cameraProvider = cameraProviderFuture.get()
+
+                // Unbind all use cases before rebinding
+                cameraProvider.unbindAll()
+
+                // Initialize preview
+                val innerPreview = androidx.camera.core.Preview.Builder()
+                    .build()
+                    .also {
+                        it.setSurfaceProvider(previewView.surfaceProvider)
+                        preview = it
+                    }
+
+                // Initialize image capture
+                imageCapture = ImageCapture.Builder()
+                    .build()
+
+
+                try {
+                    // Bind use cases to camera
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraSelector,
+                        innerPreview,
+                        imageCapture
+                    )
+                } catch (exc: Exception) {
+                    Log.e("CameraPreview", "Use case binding failed", exc)
+                }
+            }, executor)
+        }
+    )
 }
 
 @Composable
@@ -336,6 +546,7 @@ fun WelcomeCard() {
         }
     }
 }
+
 @Composable
 fun StatsOverview() {
     val averageSpeed = MotionStateHolder.averageSpeed
@@ -699,11 +910,9 @@ enum class AppDestinations(
     val outlinedIcon: ImageVector
 ) {
     HOME("Home", Icons.Filled.Home, Icons.Outlined.Home),
-    FAVORITES("Favorites", Icons.Filled.Favorite, Icons.Outlined.FavoriteBorder),
+    CAMERA("Camera", Icons.Filled.Camera, Icons.Outlined.Camera),
     PROFILE("Profile", Icons.Filled.AccountCircle, Icons.Outlined.Person),
-    LOBSTER("Lobster", Icons.Filled.Favorite, Icons.Outlined.FavoriteBorder),
 }
-
 
 @Preview(showBackground = true)
 @Composable
