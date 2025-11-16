@@ -30,6 +30,7 @@ class TapDetection : AccessibilityService() {
     private var tapViolationCounter = 0
     private var scrollViolationCounter = 0
     private var typeViolationCounter = 0
+    private var lastViolationTime = System.currentTimeMillis()
 
     /**
      * called every time something happens on the phone
@@ -42,8 +43,9 @@ class TapDetection : AccessibilityService() {
 
         //detect typing + increase risk score
         if (type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
-            riskScoreTyping += 12 //SAME HERE
             typeViolationCounter++
+            lastViolationTime = now
+            riskScoreTyping += (9 * ln(typeViolationCounter.toDouble())).toInt()
             vibrate()
             Log.d("TapService", "Typing detected - immediate risk")
             showBanner("Typing detected - please focus on the road.")
@@ -60,7 +62,8 @@ class TapDetection : AccessibilityService() {
             //if 6 taps happened within 5 seconds, 1 violations
             if (tapTimes.size >= 6) {
                 tapViolationCounter++
-                riskScoreTapping += (6 * ln(1 + tapViolationCounter.toDouble())).toInt()
+                lastViolationTime = now
+                riskScoreTapping += (6 * ln(tapViolationCounter.toDouble())).toInt()
                 tapTimes.clear() //clear window after violation
 
 
@@ -83,7 +86,8 @@ class TapDetection : AccessibilityService() {
             //if 6 taps happened within 5 seconds, 1 violations
             if (scrollTimes.size >= 6) {
                 tapViolationCounter++
-                riskScoreScrolling += 4 //CHANGE TO FORMULA //2 * riskScore.pow(tapViolationCounter)
+                lastViolationTime = now
+                riskScoreScrolling += (7 * ln(scrollViolationCounter.toDouble())).toInt()
                 tapTimes.clear() //clear window after violation
 
 
@@ -105,6 +109,14 @@ class TapDetection : AccessibilityService() {
                 "ALERT: High distraction detected. Please stop using phone while driving."
             )
             riskScore = 0 //OPTIONAL RESET so alert doesn't trigger constantly
+        }
+
+        val noViolationMs = now - lastViolationTime
+
+        if (noViolationMs > 3 * 60 * 1000L){ //3 minutes without any violations
+            riskScore = (riskScore * 0.95).toInt() //reduce by 5%
+            lastViolationTime = now //reset timer so decay doesn't repeat immediately
+            Log.d("TapService", "Risk reduced due to safe behavior -> $riskScore")
         }
 
 
