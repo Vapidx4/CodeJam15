@@ -6,6 +6,7 @@ import android.os.Vibrator
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import kotlin.math.ln
+import com.example.drivesafe.AlertManager
 
 /**
  * lets us listen to UI elements on the phone while enabled in Android -> Settings -> Accessibility
@@ -71,7 +72,7 @@ class TapDetection : AccessibilityService() {
                 if (tapViolationCounter % 3 == 0) {
                     showBanner("Lots of tapping detected")
                 }
-                Log.d("TapService", "Tap violation ($tapViolationCounter")
+                Log.d("TapService", "Scroll violation ($tapViolationCounter")
             }
         }
 
@@ -85,15 +86,15 @@ class TapDetection : AccessibilityService() {
 
             //if 6 scrolls happened within 5 seconds, 1 violation
             if (scrollTimes.size >= 6) {
-                tapViolationCounter++
+                scrollViolationCounter++
                 lastViolationTime = now
                 riskScoreScrolling += (7 * ln(scrollViolationCounter.toDouble())).toInt()
-                tapTimes.clear() //clear window after violation
+                scrollTimes.clear() //clear window after violation
 
 
                 //for every 3 violations, show a warning (not every single time)
-                if (tapViolationCounter % 3 == 0) {
-                    showBanner("Lots of tapping detected")
+                if (scrollViolationCounter % 3 == 0) {
+                    showBanner("Lots of scrolling detected")
                 }
                 Log.d("TapService", "Scroll violation ($scrollViolationCounter")
             }
