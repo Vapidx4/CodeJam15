@@ -80,6 +80,8 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import com.example.drivesafe.service.TapListenerService
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.lifecycle.LifecycleOwner
@@ -366,9 +368,138 @@ fun DriveSafeApp() {
                 AppDestinations.FAVORITES -> TapDebugScreen()//FavoritesScreen()
                 AppDestinations.CAMERA -> CameraScreen()
                 AppDestinations.PROFILE -> ProfileScreen()
+                AppDestinations.LOBSTER -> LobsterScreen()
             }
         }
     }
+}
+
+@Composable
+fun CameraScreen(
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    Column(modifier = modifier.fillMaxSize()) {
+        // Camera Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBackClick) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text(
+                text = "Camera Preview",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Camera Content
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
+        ) {
+            CameraPreview(
+                modifier = Modifier.fillMaxSize(),
+                lifecycleOwner = lifecycleOwner,
+                cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+            )
+
+            // Camera controls overlay
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Front Camera - Driver Monitoring",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .padding(8.dp)
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Add camera controls here if needed
+                    // Example: Switch camera, take photo, etc.
+                }
+            }
+        }
+    }
+}
+
+
+
+@androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+@Composable
+fun CameraPreview(
+    modifier: Modifier = Modifier,
+    lifecycleOwner: LifecycleOwner,
+    cameraSelector: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+) {
+    val context = LocalContext.current
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+
+    var preview by remember { mutableStateOf<androidx.camera.core.Preview?>(null) }
+    var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+
+    AndroidView(
+        factory = { ctx ->
+            PreviewView(ctx).apply {
+                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                scaleType = PreviewView.ScaleType.FILL_CENTER
+            }
+        },
+        modifier = modifier,
+        update = { previewView ->
+            val executor = ContextCompat.getMainExecutor(context)
+
+            cameraProviderFuture.addListener({
+                val cameraProvider = cameraProviderFuture.get()
+
+                // Unbind all use cases before rebinding
+                cameraProvider.unbindAll()
+
+                // Initialize preview
+                val innerPreview = androidx.camera.core.Preview.Builder()
+                    .build()
+                    .also {
+                        it.setSurfaceProvider(previewView.surfaceProvider)
+                        preview = it
+                    }
+
+                // Initialize image capture
+                imageCapture = ImageCapture.Builder()
+                    .build()
+
+
+                try {
+                    // Bind use cases to camera
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraSelector,
+                        innerPreview,
+                        imageCapture
+                    )
+                } catch (exc: Exception) {
+                    Log.e("CameraPreview", "Use case binding failed", exc)
+                }
+            }, executor)
+        }
+    )
 }
 
 @Composable
@@ -526,29 +657,42 @@ fun HomeScreen() {
 @Composable
 fun WelcomeCard() {
     Card(
+        // Use a more distinct shape and elevation
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            // Keep the primary container color but consider a lighter shade for contrast
+            containerColor = MaterialTheme.colorScheme.primary
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
+        Row( // Change to Row to align icon and text
+            modifier = Modifier.padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Good morning!",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+            // Add a leading icon for visual interest
+            Icon(
+                imageVector = Icons.Default.DirectionsCar,
+                contentDescription = "Car Icon",
+                tint = Color.White, // High contrast
+                modifier = Modifier.size(48.dp).padding(end = 16.dp)
             )
-            Text(
-                text = "Ready for a safe drive?",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-            )
+            Column {
+                Text(
+                    text = "Good morning, driver!", // More engaging text
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White // Use White for high contrast on the primary color
+                )
+                Text(
+                    text = "Ready for a safe drive?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.8f) // Slightly transparent white
+                )
+            }
         }
     }
 }
-
 @Composable
 fun StatsOverview() {
     val averageSpeed = MotionStateHolder.averageSpeed
@@ -891,6 +1035,22 @@ fun ProfileScreen() {
     }
 }
 
+
+@Composable
+fun LobsterScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "🦞",
+            style = MaterialTheme.typography.displayLarge,
+            fontSize = 200.sp
+        )
+    }
+}
 enum class AppDestinations(
     val label: String,
     val filledIcon: ImageVector,
