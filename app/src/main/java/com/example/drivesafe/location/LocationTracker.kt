@@ -72,6 +72,6 @@ class LocationTracker(
 
     companion object {
         // You can tweak this threshold to define "moving"
-        private const val MOVING_THRESHOLD_KMH = 10f
+        private const val MOVING_THRESHOLD_KMH = 1f
     }
 }
